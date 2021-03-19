@@ -5,7 +5,7 @@ import { Machine, assign, actions, State } from "xstate";
 const { send, cancel } = actions;
 import { useMachine, asEffect } from "@xstate/react";
 import { inspect } from "@xstate/inspect";
-import { dmMachine } from "./dmAppointmentUpdated";
+import { dmMachine } from "./final_project"; 
 
 
 inspect({
