@@ -80,6 +80,34 @@ const grammar: { [index: string]: { person?: string, day?: string, time?: string
 	
 }
 
+
+const math_operator_store = {
+	operate: function(a,b,operator){
+			switch(operator){
+				case 'plus': 
+					return a+b
+				case 'subtract': 
+					return a-b
+				case 'times': 
+					return a*b
+				case 'divide':
+					return a/b
+			}
+		},
+	0: {
+		operator: "plus",
+	},
+	1: {
+		operator: "subtract",
+	},
+	2: {
+		operator: "times",
+	},
+	3: {
+		operator: "divide",
+	},
+}
+
 const riddles_store = {
 	0: {
 		riddle: "What has to be broken before you can use it?",
@@ -240,10 +268,14 @@ function nluRequest(): MachineConfig<SDSContext, any, SDSEvent> {
 }
 
 const commands = ['stop', 'help']
+var maxspeech_count_local = 0
 
 export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
     initial: 'main',
     id: 'init',
+    context: {
+		maxspeech_count: 0,
+	},
     on: {
 		MAXSPEECH: '.maxspeech',
 		RECOGNISED: 
@@ -268,7 +300,9 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 				 },
 				clicky: {
 					on: {
-						CLICK: 'begin'
+						CLICK: {
+							target: 'begin',
+						},
 					},
 				},
 				begin:{
@@ -302,16 +336,75 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 		            }
 				},
 				quick_math: {
-		            id: "todo",
+		            id: "quick_math",
 					initial: "prompt",
 					on: {
-						ENDSPEECH: "#init"
+						RECOGNISED: [
+							{
+								target: '.right_answer',
+								cond: (context) => context.recResult === context.solution.toString()
+							},
+							{
+								target: ".wrong_answer",
+								cond: (context) => !commands.includes(context.recResult)
+							},
+							
+						]
 					},
-					states: {
+					states: {	
+						//~ hist: {
+							//~ type: 'history',
+							//~ history: 'shallow',
+						 //~ },
 						prompt: {
-							entry: say("You are in the to do thing."),
+							entry: say("Here is your maths question"),
+							on: {
+								ENDSPEECH: {
+									target: "ask_math_question",
+									actions: assign((context) => {
+										return { 
+											number_one: Math.floor(Math.random() * 100),
+											number_two: Math.floor(Math.random() * 100),
+											operator_id: Math.floor(Math.random() * 3),
+										}
+									}),
+								},
+							},
 						},
-					}
+						//~ hint: {
+							//~ entry: send((context) => ({
+		                        //~ type: "SPEAK",
+		                        //~ value: 'placeholder'//`The hint is ${riddles_store[context.riddle_id].hint}. So`
+		                    //~ })),
+						//~ },
+						ask_math_question: {
+							entry: send((context) => ({
+		                        type: "SPEAK",
+		                        value: `What is ${context.number_one} ${math_operator_store[context.operator_id].operator} ${context.number_two}.`
+		                    })),
+		                    on: { ENDSPEECH: {
+									target: "ask",
+									actions: assign(context=> {
+										return { solution: math_operator_store.operate(context.number_one, context.number_two, math_operator_store[context.operator_id].operator) }
+									})
+								}
+							}
+						},
+						wrong_answer: {
+							entry: say("Sorry, that isn't right, try again."),
+							on: { ENDSPEECH: "ask" }
+						},
+						right_answer: {
+							entry: say("Good job, that was right!"),
+							on: { ENDSPEECH: "#init" }
+						},
+						ask: {
+			                entry: [
+								send('LISTEN'),
+								send( 'MAXSPEECH', { delay: 7000, id: 'maxspeech_cancel' } )
+							],
+			            },
+			        }
 				},
 				riddles: {
 		            id: "riddles",
@@ -347,10 +440,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 								ENDSPEECH: {
 									target: "ask_riddle",
 									actions: assign((context) => {
-										//if (!"riddle_id" in context){
-											return { riddle_id: Math.floor(Math.random() * 7) }
-										//}
-										//return {}
+										return { riddle_id: Math.floor(Math.random() * 7) }
 									}),
 								},
 							},
@@ -408,21 +498,31 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 		    },
 		},
 		maxspeech: {
-			entry: say("Sorry,"),
+			initial: 'apologies',
 			on: {
 				ENDSPEECH: [
 					{
-						cond: (context)=> context.maxspeech_count < 3,
-						target: 'main.hist'
+						target: '#init.main.hist',
+						cond: (function() { return maxspeech_count_local < 2 } ),
+						actions: [
+							(function() { maxspeech_count_local ++ } ),
+							assign(context=>{context})
+						]
 					},
 					{
+						target: '#init',
 						actions: [
-							assign((context) => { return { maxspeech_count: 0 } }),
-							say("Cancelled because you don't say nutting")
-						],
-						target: '#init'
-					}
+							(function() { maxspeech_count_local = 0 } ),
+							say("and you haven't responded in a while. Resetting."),
+							assign(context=>{context})
+						]
+					},
 				]
+			},
+			states: {
+				apologies: {
+					entry: say("Sorry, I couldn't hear you. ")
+				},
 			}
 		},
 		stop: {
@@ -443,11 +543,6 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 		},
 	},
 })
-
-
-
-
-
 
 
 

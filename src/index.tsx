@@ -53,13 +53,14 @@ const machine = Machine<SDSContext, any, SDSEvent>({
 							target: 'idle'
 						},
                         MAXSPEECH: [
+	                        //{
+							//	cond: context=> context.maxspeech_count < 2,
+							//	target:'idle',
+							//	actions: assign((_context, event) => { return { maxspeech_count: _context.maxspeech_count +1 } }),
+	                        //},
 	                        {
-								cond: context=> context.maxspeech_count < 3,
 								target:'idle',
-								actions: assign((_context, event) => { return { maxspeech_count: _context.maxspeech_count +1 } }),
-	                        },
-	                        {
-								target:'idle'
+								//actions: assign((_context, event) => { return { maxspeech_count: 0 } }),
 	                        },
 	                    ]
                     },
