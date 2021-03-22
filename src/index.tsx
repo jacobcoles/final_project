@@ -6,7 +6,7 @@ const { send, cancel } = actions;
 import { useMachine, asEffect } from "@xstate/react";
 import { inspect } from "@xstate/inspect";
 import { dmMachine } from "./final_project"; 
-
+import potato from './potatis.jpeg';
 
 inspect({
     url: "https://statecharts.io/inspect",
@@ -48,7 +48,7 @@ const machine = Machine<SDSContext, any, SDSEvent>({
                         RECOGNISED: {
 							actions: [
 								cancel('maxspeech_cancel'),
-								assign((_context, event) => { return { maxspeech_count: 0 } })
+								//assign((_context, event) => { return { maxspeech_count: 0 } })
 							],
 							target: 'idle'
 						},
@@ -128,8 +128,17 @@ const ReactiveButton = (props: Props): JSX.Element => {
     }
 }
 
+/*
+var SpeechGrammarList = SpeechGrammarList || webkitSpeechGrammarList
+var letters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+var grammar = '#JSGF V1.0; grammar letters; public <letter> = ' + letters.join(' | ') + ' ;'
+var speechRecognitionList = new SpeechGrammarList();
+speechRecognitionList.addFromString(grammar, 1);
+*/
+
+
 function App() {
-    const { speak, cancel, speaking } = useSpeechSynthesis({
+    const { speak, cancel, speaking, voices } = useSpeechSynthesis({
         onEnd: () => {
             send('ENDSPEECH');
         },
@@ -137,6 +146,7 @@ function App() {
     const { listen, listening, stop } = useSpeechRecognition({
         onResult: (result: any) => {
             send({ type: "ASRRESULT", value: result });
+            console.log(result)
         },
     });
     const [current, send, service] = useMachine(machine, {
@@ -145,8 +155,10 @@ function App() {
             recStart: asEffect(() => {
                 console.log('LETS GOOOOOO');
                 listen({
+					//lang: 'en-AU',
                     interimResults: false,
-                    continuous: true
+                    continuous: true,
+                    //grammars: speechRecognitionList,
                 });
             }),
             recStop: asEffect(() => {
@@ -159,7 +171,10 @@ function App() {
             }),
             ttsStart: asEffect((context, effect) => {
                 console.log('Speaking...');
-                speak({ text: context.ttsAgenda })
+                speak({ 
+					text: context.ttsAgenda,
+					voice: voices[0]
+				})
             }),
             ttsCancel: asEffect((context, effect) => {
                 console.log('TTS STOP...');
@@ -175,12 +190,16 @@ function App() {
 
     return (
         <div className="App">
+			<h1 className="scoring">
+			{current.context.ttsAgenda || 'Welcome'}
+			</h1>
             <ReactiveButton state={current} onClick={() => send('CLICK')} />
         </div>
     )
 };
 
 
+			//<img src={potato} alt="potato" height={300} width={200} />
 
 //RASA
 

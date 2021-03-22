@@ -12,55 +12,6 @@ function listen(): Action<SDSContext, SDSEvent> {
 }
 
 const grammar: { [index: string]: { person?: string, day?: string, time?: string, bool_val?: boolean, initial_function: string } } = {
-    //~ "john": { person: "John Appleseed" },
-    //~ "sarah": { person: "Sarah Swiggity" },
-    //~ "daddy": { person: "The big lad" },
-    //~ "on monday": { day: "Friday" },
-    //~ "on tuesday": { day: "Thursday" },
-    //~ "on wednesday": { day: "Friday" },
-    //~ "on thursday": { day: "Thursday" },
-    //~ "on friday": { day: "Friday" },
-    //~ "on saturday": { day: "Thursday" },
-    //~ "on sunday": { day: "Friday" },
-    //~ "at 8": { time: "8:00" },
-    //~ "at 9": { time: "9:00" },
-    //~ "at 10": { time: "10:00" },
-    //~ "at 11": { time: "11:00" },
-    //~ "at 12": { time: "12:00" },
-    //~ "at 13": { time: "13:00" },
-    //~ "at 14": { time: "14:00" },
-    //~ "at 15": { time: "15:00" },
-    //~ "at 16": { time: "16:00" },
-    //~ "8": { time: "8:00" },
-    //~ "9": { time: "9:00" },
-    //~ "10": { time: "10:00" },
-    //~ "11": { time: "11:00" },
-    //~ "12": { time: "12:00" },
-    //~ "13": { time: "13:00" },
-    //~ "14": { time: "14:00" },
-    //~ "15": { time: "15:00" },
-    //~ "16": { time: "16:00" },
-    //~ "yes": { bool_val: true },
-	//~ "yeah": { bool_val: true },
-	//~ "ok": { bool_val: true },
-	//~ "sure": { bool_val: true },
-	//~ "ja": { bool_val: true },
-    //~ "no": { bool_val: false },
-	//~ "nope": { bool_val: false },
-	//~ "nein": { bool_val: false },
-	//~ "nej": { bool_val: false },
-	//~ "appointment": { initial_function: "appt" },
-	//~ "an appointment": { initial_function: "appt" },
-	//~ "set up an appointment": { initial_function: "appt" },
-	//~ "make an appointment": { initial_function: "appt" },
-	//~ "to do": { initial_function: "todo" },
-	//~ "set up a to do": { initial_function: "todo" },
-	//~ "make to do": { initial_function: "todo" },
-	//~ "make a to do": { initial_function: "todo" },
-	//~ "timer": { initial_function: "timer" },
-	//~ "make a timer": { initial_function: "timer" },
-	//~ "set a timer": { initial_function: "timer" },
-	//~ "set timer": { initial_function: "timer" },
 
 	"quick math": { quick_math: null },
 	"quick maths": { quick_math: null },
@@ -72,11 +23,16 @@ const grammar: { [index: string]: { person?: string, day?: string, time?: string
 	"tell me a riddle": { riddles: null },
 	"play riddles": { riddles: null },
 	
-	"chimp test": { chimp_test: null },
-	"play chimp test": { chimp_test: null },
-	"play the chimp test": { chimp_test: null },
-	"the chimp test": { chimp_test: null },
-		
+	"memory game": { chimp_test: null },
+	"memory test": { chimp_test: null },
+	"number test": { chimp_test: null },
+	"number memory test": { chimp_test: null },
+	"the memory game": { chimp_test: null },
+	"the memory test": { chimp_test: null },
+	"the number test": { chimp_test: null },
+	"the number memory test": { chimp_test: null },
+	
+	
 	
 }
 
@@ -94,6 +50,39 @@ const math_operator_store = {
 					return a/b
 			}
 		},
+	generate_number: function(operator){
+		switch(operator){
+			case 'plus': 
+				return a+b
+			case 'subtract': 
+				return a-b
+			case 'times': 
+				return a*b
+			case 'divide':
+				return a/b
+		}
+	},
+	parse_asr_numbers: function(input){
+		const numbers = {
+			0: 'zero',
+			1: 'one',
+			2: 'two',
+			3: 'three',
+			4: 'four',
+			5: 'five',
+			6: 'six',
+			7: 'seven',
+			8: 'eight',
+			9: 'nine',
+		}
+		for (var i = 0; i < numbers.length; i++) {
+			input = input.replace(numbers[i], i)
+		}
+		input = input.replace('for', 4)
+		input = input.replace('to', 2)
+		input = input.replace('too', 2)
+		return input.split(/[\s--,.+]/).join('') 
+	},
 	0: {
 		operator: "plus",
 	},
@@ -302,6 +291,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 					on: {
 						CLICK: {
 							target: 'begin',
+							actions: assign(context=>{maxspeech_count_local = 0; return { maxspeech_count: 0 } })
 						},
 					},
 				},
@@ -331,7 +321,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 					},
 					states: {
 						prompt: {
-							...promptAndAsk("Hellooo. You have a selection of one of the following mini games. You can choose between quick maths, riddles, or the chimp test. You can also tell me to stop or ask for help at any time. ")
+							...promptAndAsk("hello") //"Hellooo. You have a selection of one of the following mini games. You can choose between quick maths, riddles, the number memory test, or spelling. You can also tell me to stop or ask for help at any time. ")
 						}
 		            }
 				},
@@ -351,11 +341,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 							
 						]
 					},
-					states: {	
-						//~ hist: {
-							//~ type: 'history',
-							//~ history: 'shallow',
-						 //~ },
+					states: {
 						prompt: {
 							entry: say("Here is your maths question"),
 							on: {
@@ -371,12 +357,6 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 								},
 							},
 						},
-						//~ hint: {
-							//~ entry: send((context) => ({
-		                        //~ type: "SPEAK",
-		                        //~ value: 'placeholder'//`The hint is ${riddles_store[context.riddle_id].hint}. So`
-		                    //~ })),
-						//~ },
 						ask_math_question: {
 							entry: send((context) => ({
 		                        type: "SPEAK",
@@ -410,9 +390,6 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 		            id: "riddles",
 					initial: "prompt",
 					on: {
-						//~ MAXSPEECH: {
-							//~ actions: say("Sorry, you have taken too")
-						//~ },
 						RECOGNISED: [
 							{
 								cond: context => riddles_store[context.riddle_id].answers.includes(context.recResult),
@@ -429,11 +406,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 							}
 						]
 					},
-					states: {	
-						//~ hist: {
-							//~ type: 'history',
-							//~ history: 'shallow',
-						 //~ },
+					states: {
 						prompt: {
 							entry: say("Here is your riddle"),
 							on: {
@@ -471,29 +444,89 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 					}
 				},
 				chimp_test: {
-		            id: "timer",
+		            id: "chimp_test",
 					initial: "prompt",
 					on: {
-						ENDSPEECH: "#init"
+						RECOGNISED: [
+							{
+								target: '.correct_sequence',
+								actions: assign((context)=>{
+									context.sequence.push(Math.floor(Math.random() * 9))
+									return { one_try_given: false }
+								}),
+								cond: context => math_operator_store.parse_asr_numbers(context.recResult) === context.sequence.join('')
+							},
+							{ 
+								target: ".wrong_sequence" ,
+								cond: (context) => !commands.includes(context.recResult)
+							}
+						]
 					},
 					states: {
 						prompt: {
-							entry: say("You are in the timer thing.")
+							entry: say("This is the chimp test. I will say an ever increasing sequence of numbers which you need to repeat back to me. If you can't recall a sequence you lose. Try to get the highest score!"),
+							on: {
+								ENDSPEECH: {
+									target: 'say_sequence',
+									actions: assign( (context)=> {
+										return { sequence: [Math.floor(Math.random() * 9),] }
+									})
+								}
+							},
 						},
+						say_sequence: {
+							entry: send((context) => ({
+		                        type: "SPEAK",
+		                        value: `The sequence is ${context.sequence.join(' ')}. Repeat that back`
+		                    })),
+		                    on: { ENDSPEECH: 'ask' }
+						},
+						correct_sequence: {
+							entry: send((context) => ({
+		                        type: "SPEAK",
+		                        value: `Good job! You have ${context.sequence.length-1} points`
+		                    })),
+							on: { ENDSPEECH: "say_sequence" }
+						},
+						wrong_sequence: {
+							entry: say('That is incorrect. '),
+							on: { 
+								ENDSPEECH: [ 
+									{
+										target: 'say_sequence',
+										cond: context => {return !(context.one_try_given || false)},
+										actions: [
+											assign((context)=>{return { one_try_given: true } }),
+											say("I will give you one more chance to get that right or you lose.")
+										]
+									},
+									{
+										actions: send((context) => ({
+					                        type: "SPEAK",
+					                        value: `You ended with ${context.sequence.length-1} points`
+					                    })),
+										target: '#init',
+									}
+								]
+							}
+						},
+						ask: {
+			                entry: [
+								send('LISTEN'),
+								send( 'MAXSPEECH', { delay: context=>(4000+1000*context.sequence.length), id: 'maxspeech_cancel' } ),
+							],
+			            },
 					}
 				},
 				please_repeat: {
 		            id: "please_repeat",
 					initial: "prompt",
-					on: {
-						ENDSPEECH: "#init"
-					},
 					states: {
 						prompt: {
 							entry: say("Sorry, I didn't get that. ")
 						},
 					},
-					on: { ENDSPEECH: "#init.main.hist" }
+					on: { ENDSPEECH: "#init" }
 				},
 		    },
 		},
