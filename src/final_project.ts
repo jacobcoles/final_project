@@ -200,61 +200,62 @@ function promptAndAsk(prompt: string): MachineConfig<SDSContext, any, SDSEvent> 
     })
 }
 
-const proxyurl = "https://cors-anywhere.herokuapp.com/" // can try instead "https://boiling-depths-26621.herokuapp.com/"
-const rasaurl = 'https://rasajacobcoles.herokuapp.com/model/parse'
-function nluRequest(): MachineConfig<SDSContext, any, SDSEvent> {
-    return ({
-		initial: 'http_timeout',
-		invoke: {
-			id: "rasaquery",
-			src: (context, event) => {
+const proxyurl = "https://cors-anywhere.herokuapp.com/" //"https://boiling-depths-26621.herokuapp.com/"
+const rasaurl = 'https://herokufinalproj.herokuapp.com/model/parse'
+//~ function nluRequest(): MachineConfig<SDSContext, any, SDSEvent> {
+    //~ return ({
+		//~ initial: 'http_timer',
+		//~ on: {
+			//~ MAX_HTTP: {
+				//~ target: '#root.dm',
+				//~ actions: say('The RASA server is taking too long to respond. Please wait and try again. ')
+			//~ }
+		//~ },
+		//~ invoke: {
+			//~ id: "rasaquery",
+			//~ src: (context, event) => {
 				
-				return fetch(new Request(proxyurl + rasaurl, {
-		        method: 'POST',
-		        headers: { 'Origin': 'http://localhost:3000/' }, // only required with proxy
-		        body: `{"text": "${context.query}"}`
-				}))
-		        .then(data => data.json());
+				//~ return fetch(new Request(proxyurl + rasaurl, {
+		        //~ method: 'POST',
+		        //~ headers: { 'Origin': 'http://localhost:3000/' }, // only required with proxy
+		        //~ body: `{"text": "${context.recResult}"}`
+				//~ }))
+		        //~ .then(data => data.json());
 
-			},
-			onDone: [
-				{
-					target: '.invalid_query',
-					cond: (context, event)=> { return ((event.data.intent.confidence) < 0.7) }
-				},
-				{
-					target: '.valid_query',
-                    actions: [
-						assign((context, event) => { return {snippet: event.data.intent.name }}),
-						(context:SDSContext, event:any) => console.log(event.data),
-					]
-				},
-			],
-			onError: {
-					target: '#root.dm',
-					actions: say("Sorry, there was an error. ")
-				},
-		},
-		states: {
-			http_timeout: {
-				invoke: {
-					src: (context, event) => {
-						return new Promise((resolve) => {
-								setTimeout(() => { resolve() }, 2000) 
-							})
-					},
-				},
-				onDone: send('HTTP_TIMEOUT')
-			},
-			invalid_query: {
-				entry: send('INVALID_QUERY'),
-			},
-			valid_query: {
-				entry: send('VALID_QUERY'),
-			},
-		},
-	})
-}
+			//~ },
+			//~ onDone: send("NLU_REQ_DONE"), //(context,event)=>{
+				//~ //send({ type: "NLU_REQ_DONE", value: 'unconfident_resp'  })
+				//~ //send("NLU_REQ_DONE")
+			//~ //},
+			//~ {
+				//~ actions: [
+					//~ (context:SDSContext, event:any) => console.log(event.data),
+					//~ (context, event)=>{
+						//~ if((event.data.intent.confidence) < 0.7){
+							//~ var snippet = 'unconfident_resp' 
+						//~ }
+						//~ else{
+							//~ var snippet = event.data.intent.name
+						//~ }
+						//~ send({ type: "NLU_REQ_DONE", value: ( event.data.intent.name || 'unconfident_resp' ) })
+					//~ }
+				//~ ]
+			//~ },
+			//~ onError: {
+					//~ target: '#root.dm',
+					//~ actions: say("Sorry, there was an error. ")
+				//~ },
+		//~ },
+		//~ states: {
+			//~ http_timer: {
+				//~ entry: send( 'MAX_HTTP', { delay: 12000, id: 'maxspeech_cancel' } )
+			//~ },
+			//~ done_req: {
+				//~ entry: assign((function(context,event){console.log(event.data.intent.name);send({ type: "NLU_REQ_DONE", value: 'unconfident_resp'  }) }))
+			//~ }
+		//~ }
+	//~ })
+//~ }
 
 const commands = ['stop', 'help']
 var maxspeech_count_local = 0
@@ -299,36 +300,117 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 					initial: "prompt",
 					id: "welcome",
 					on: {
-						RECOGNISED: [
+						MAX_HTTP: {
+							target: '#init',
+							actions: say('The RASA server is taking too long to respond. Please wait and try again. ')
+						},
+						NLU_REQ_DONE: [
 							{
-			                    cond: (context) => "quick_math" in (grammar[context.recResult] || {}),
-			                    //actions: assign((context) => { return { quick_math: grammar[context.recResult].quick_math }}),
-			                    target: "quick_math"
+			                    cond: (context) => context.snippet === "chimp_test",
+			                    target: "chimp_test",
+							},
+							{
+								target: "quick_math",
+								cond: (context, event) => context.snippet === "quick_math",
 							},
 							{
 								target: "riddles",
-								cond: (context) => "riddles" in (grammar[context.recResult] || {}),
+								cond: (context) => context.snippet === "riddles",
 							},
 							{
-								target: "chimp_test",
-								cond: (context) => "chimp_test" in (grammar[context.recResult] || {}),
+								target: ".re_prompt",
+								//cond: (context) => context.snippet === "unconfident_resp",
 							},
-							{
-								target: "please_repeat",
-								cond: (context) => !commands.includes(context.recResult)
-							},
-						]
+							//~ {
+								//~ target: "please_repeat",
+								//~ cond: (context) => !commands.includes(context.recResult),
+								//~ actions: assign(context=>console.log(context.snippet))
+							//~ },
+							
+						],
+						RECOGNISED: '.nlu_process',
+						MAXSPEECH: '.too_long',
 					},
 					states: {
 						prompt: {
 							...promptAndAsk("hello") //"Hellooo. You have a selection of one of the following mini games. You can choose between quick maths, riddles, the number memory test, or spelling. You can also tell me to stop or ask for help at any time. ")
-						}
+						},
+						nlu_process: {
+							initial: 'http_timer',
+							invoke: {
+								id: "rasaquery",
+								src: (context, event) => {
+									
+									return fetch(new Request(proxyurl + rasaurl, {
+							        method: 'POST',
+							        headers: { 'Origin': 'http://localhost:3000/' }, // only required with proxy
+							        body: `{"text": "${context.recResult}"}`
+									}))
+							        .then(data => data.json());
+					
+								},
+								onDone: 'completed_query',
+								//~ {
+									//~ actions: [
+										//~ assign((context, event)=>{
+											//~ console.log(event.data.intent.name),
+											//~ send({ type: "NLU_REQ_DONE", value: ( event.data.intent.name || 'unconfident_resp' ) })
+										//~ }),
+									//~ ]
+								//~ },
+								onError: {
+										target: '#init',
+										actions: say("Sorry, there was an error. ")
+								},
+							},
+							states: {
+								http_timer: {
+									entry: send( 'MAX_HTTP', { delay: 12000, id: 'maxspeech_cancel' } )
+								},
+							},
+						},
+						re_prompt: {
+							entry: say("Sorry, I didn't quite get that. Repeat yoself!"),
+							on: { ENDSPEECH: 'ask' }
+						},
+						ask: {
+			                entry: [
+								send('LISTEN'),
+								send( 'MAXSPEECH', { delay: 7000, id: 'maxspeech_cancel' } )
+							],
+			            },
+						completed_query: {
+							entry: [
+								assign((context, event)=>{
+									console.log(event.data.intent.name)
+									return { snippet: ( event.data.intent.name || 'unconfident_resp' ) }
+								}),
+								send("NLU_REQ_DONE")
+							]
+						},
+						too_long:{
+							entry: say('Still there?'),
+							on: { 
+								ENDSPEECH: [
+									{
+										target: '#init',
+										cond: (context) => context.maxspeech_counter > 2,
+										actions: say("As you haven't responded; resetting...")
+									},
+									{
+										target: 'ask',
+										actions: assign(context=>{ return { maxspeech_counter: (context.maxspeech_counter || 0)+1 } })
+									},
+								]
+							}
+						},
 		            }
 				},
 				quick_math: {
 		            id: "quick_math",
 					initial: "generate_math_question",
 					on: {
+						MAXSPEECH: '.too_long',
 						RECOGNISED: [
 							{
 								target: '.right_answer',
@@ -388,6 +470,22 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 								}
 							}
 						},
+						too_long:{
+							entry: say('Still there?'),
+							on: { 
+								ENDSPEECH: [
+									{
+										target: '#init',
+										cond: (context) => context.maxspeech_counter > 2,
+										actions: say("As you haven't responded; resetting...")
+									},
+									{
+										target: 'ask',
+										actions: assign(context=>{ return { maxspeech_counter: (context.maxspeech_counter || 0)+1 } })
+									},
+								]
+							}
+						},
 						ask: {
 			                entry: [
 								send('LISTEN'),
@@ -419,7 +517,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 					},
 					states: {
 						prompt: {
-							entry: say("Here is your riddle"),
+							entry: say("Guess the answer to the riddle. Don't be afraid to ask for a hint. Here is your riddle: "),
 							on: {
 								ENDSPEECH: {
 									target: "ask_riddle",
@@ -444,8 +542,22 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 		                    on: { ENDSPEECH: "ask" }
 						},
 						too_long:{
-							entry: say('You are taking a while, if you would like a hint, just ask!'),
-							on: { ENDSPEECH: 'ask' },
+							entry: say('Hello?'),
+							on: { 
+								ENDSPEECH: [
+									{
+										target: '#init',
+										actions: say("As you haven't responded, resetting..."),
+										cond: context=> context.maxspeech_counter >1,
+									},
+									{
+										target: 'ask',
+										actions: [
+											assign(context=>{ return { maxspeech_counter: (context.maxspeech_counter || 0) +1 } }),
+										]
+									},
+								]
+							},
 						},
 						wrong_answer: {
 							entry: say("Sorry, that isn't right, try again. "),
