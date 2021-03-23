@@ -155,7 +155,7 @@ function App() {
             recStart: asEffect(() => {
                 console.log('LETS GOOOOOO');
                 listen({
-					//lang: 'en-AU',
+					lang: 'en-AU',
                     interimResults: false,
                     continuous: true,
                     //grammars: speechRecognitionList,

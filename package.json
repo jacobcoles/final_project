@@ -6,10 +6,13 @@
   "keywords": [],
   "main": "src/index.tsx",
   "dependencies": {
+    "@google-cloud/speech": "^4.4.0",
     "@types/webrtc": "0.0.26",
     "@types/webspeechapi": "0.0.29",
     "@xstate/inspect": "^0.4.1",
     "@xstate/react": "1.0.1",
+    "google-auth-library": "^7.0.2",
+    "node-record-lpcm16": "^1.0.1",
     "node-sass": "^4.14.1",
     "react": "17.0.1",
     "react-dom": "17.0.1",

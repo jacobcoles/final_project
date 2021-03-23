@@ -31,26 +31,14 @@ const grammar: { [index: string]: { person?: string, day?: string, time?: string
 	"the memory test": { chimp_test: null },
 	"the number test": { chimp_test: null },
 	"the number memory test": { chimp_test: null },
-	
-	
+	"number sequence game": { chimp_test: null },
+	"the number sequence game": { chimp_test: null },
 	
 }
 
 
 const math_operator_store = {
 	operate: function(a,b,operator){
-			switch(operator){
-				case 'plus': 
-					return a+b
-				case 'subtract': 
-					return a-b
-				case 'times': 
-					return a*b
-				case 'divide':
-					return a/b
-			}
-		},
-	generate_number: function(operator){
 		switch(operator){
 			case 'plus': 
 				return a+b
@@ -58,8 +46,20 @@ const math_operator_store = {
 				return a-b
 			case 'times': 
 				return a*b
-			case 'divide':
-				return a/b
+			//~ case 'divide':
+				//~ return a/b
+			}
+		},
+	generate_number: function(operator){
+		switch(operator){
+			case 'plus': 
+				return Math.floor(Math.random() * 100)
+			case 'subtract': 
+				return Math.floor(Math.random() * 100)
+			case 'times': 
+				return Math.floor(Math.random() * 12)
+			//~ case 'divide':
+				//~ return a/b
 		}
 	},
 	parse_asr_numbers: function(input){
@@ -327,12 +327,13 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 				},
 				quick_math: {
 		            id: "quick_math",
-					initial: "prompt",
+					initial: "generate_math_question",
 					on: {
 						RECOGNISED: [
 							{
 								target: '.right_answer',
-								cond: (context) => context.recResult === context.solution.toString()
+								cond: (context) => context.recResult === context.solution.toString(),
+								actions: assign((context)=>{ return { points: (context.points || 0)+1 } })
 							},
 							{
 								target: ".wrong_answer",
@@ -342,16 +343,18 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 						]
 					},
 					states: {
-						prompt: {
+						generate_math_question: {
 							entry: say("Here is your maths question"),
 							on: {
 								ENDSPEECH: {
 									target: "ask_math_question",
 									actions: assign((context) => {
+										var operator_id = Math.floor(Math.random() * 3)
+										var operator = math_operator_store[operator_id].operator
 										return { 
-											number_one: Math.floor(Math.random() * 100),
-											number_two: Math.floor(Math.random() * 100),
-											operator_id: Math.floor(Math.random() * 3),
+											number_one: math_operator_store.generate_number(operator),
+											number_two: math_operator_store.generate_number(operator),
+											operator_id: operator_id,
 										}
 									}),
 								},
@@ -375,8 +378,15 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 							on: { ENDSPEECH: "ask" }
 						},
 						right_answer: {
-							entry: say("Good job, that was right!"),
-							on: { ENDSPEECH: "#init" }
+							entry: send((context) => ({
+		                        type: "SPEAK",
+		                        value: `Nice, that's right. You have ${context.points} ${( (context.points === 1)? 'point' : 'points')}.`
+		                    })),
+							on: { 
+								ENDSPEECH: {
+									target: "generate_math_question",
+								}
+							}
 						},
 						ask: {
 			                entry: [
@@ -390,10 +400,11 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 		            id: "riddles",
 					initial: "prompt",
 					on: {
+						MAXSPEECH: '.too_long',
 						RECOGNISED: [
 							{
 								cond: context => riddles_store[context.riddle_id].answers.includes(context.recResult),
-								actions: say("Well done, that is correct!"),
+								actions: say("Well done, that is correct! Resetting..."),
 								target: '#init'
 							},
 							{
@@ -421,15 +432,20 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 						hint: {
 							entry: send((context) => ({
 		                        type: "SPEAK",
-		                        value: `The hint is ${riddles_store[context.riddle_id].hint}. So`
+		                        value: `The hint is:\n ${riddles_store[context.riddle_id].hint} Now tell me...`
 		                    })),
+		                    on: { ENDSPEECH: "ask" }
 						},
 						ask_riddle: {
 							entry: send((context) => ({
 		                        type: "SPEAK",
-		                        value: `${riddles_store[context.riddle_id].riddle}.`
+		                        value: `${riddles_store[context.riddle_id].riddle}`
 		                    })),
 		                    on: { ENDSPEECH: "ask" }
+						},
+						too_long:{
+							entry: say('You are taking a while, if you would like a hint, just ask!'),
+							on: { ENDSPEECH: 'ask' },
 						},
 						wrong_answer: {
 							entry: say("Sorry, that isn't right, try again. "),
@@ -438,7 +454,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 						ask: {
 			                entry: [
 								send('LISTEN'),
-								send( 'MAXSPEECH', { delay: 5000, id: 'maxspeech_cancel' } )
+								send( 'MAXSPEECH', { delay: 15000, id: 'maxspeech_cancel' } )
 							],
 			            },
 					}
@@ -484,7 +500,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 						correct_sequence: {
 							entry: send((context) => ({
 		                        type: "SPEAK",
-		                        value: `Good job! You have ${context.sequence.length-1} points`
+		                        value: `Good job! You have ${context.sequence.length-1} ${( ( (context.sequence.length-1) === 1)? 'point' : 'points')}.`
 		                    })),
 							on: { ENDSPEECH: "say_sequence" }
 						},
