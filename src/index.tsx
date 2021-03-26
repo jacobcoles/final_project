@@ -53,14 +53,8 @@ const machine = Machine<SDSContext, any, SDSEvent>({
 							target: 'idle'
 						},
                         MAXSPEECH: [
-	                        //{
-							//	cond: context=> context.maxspeech_count < 2,
-							//	target:'idle',
-							//	actions: assign((_context, event) => { return { maxspeech_count: _context.maxspeech_count +1 } }),
-	                        //},
 	                        {
 								target:'idle',
-								//actions: assign((_context, event) => { return { maxspeech_count: 0 } }),
 	                        },
 	                    ]
                     },
@@ -201,17 +195,7 @@ function App() {
 
 			//<img src={potato} alt="potato" height={300} width={200} />
 
-//RASA
 
-const proxyurl = "https://cors-anywhere.herokuapp.com/";
-const rasaurl = 'https://rasajacobcoles.herokuapp.com/model/parse'
-const nluRequest = (text: string) =>
-    fetch(new Request(proxyurl + rasaurl, {
-        method: 'POST',
-        headers: { 'Origin': 'http://maraev.me' }, // only required with proxy
-        body: `{"text": "${text}"}`
-    }))
-        .then(data => data.json());
 
 const rootElement = document.getElementById("root");
 ReactDOM.render(

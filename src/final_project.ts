@@ -34,6 +34,7 @@ const grammar: { [index: string]: { person?: string, day?: string, time?: string
 	"number sequence game": { chimp_test: null },
 	"the number sequence game": { chimp_test: null },
 	
+	
 }
 
 
@@ -58,7 +59,7 @@ const math_operator_store = {
 				return Math.floor(Math.random() * 100)
 			case 'times': 
 				return Math.floor(Math.random() * 12)
-			//~ case 'divide':
+			//~ case 'divide': //division can be a bit hard on the spot for a user
 				//~ return a/b
 		}
 	},
@@ -193,69 +194,16 @@ function promptAndAsk(prompt: string): MachineConfig<SDSContext, any, SDSEvent> 
             ask: {
                 entry: [
 					send('LISTEN'),
-					send( 'MAXSPEECH', { delay: 4000, id: 'maxspeech_cancel' } )
+					send( 'MAXSPEECH', { delay: 6000, id: 'maxspeech_cancel' } )
 				]
             },
         }
     })
 }
 
-const proxyurl = "https://cors-anywhere.herokuapp.com/" //"https://boiling-depths-26621.herokuapp.com/"
+const proxyurl = "https://cors-anywhere.herokuapp.com/" //"https://boiling-depths-26621.herokuapp.com/" alternate url
 const rasaurl = 'https://herokufinalproj.herokuapp.com/model/parse'
-//~ function nluRequest(): MachineConfig<SDSContext, any, SDSEvent> {
-    //~ return ({
-		//~ initial: 'http_timer',
-		//~ on: {
-			//~ MAX_HTTP: {
-				//~ target: '#root.dm',
-				//~ actions: say('The RASA server is taking too long to respond. Please wait and try again. ')
-			//~ }
-		//~ },
-		//~ invoke: {
-			//~ id: "rasaquery",
-			//~ src: (context, event) => {
-				
-				//~ return fetch(new Request(proxyurl + rasaurl, {
-		        //~ method: 'POST',
-		        //~ headers: { 'Origin': 'http://localhost:3000/' }, // only required with proxy
-		        //~ body: `{"text": "${context.recResult}"}`
-				//~ }))
-		        //~ .then(data => data.json());
 
-			//~ },
-			//~ onDone: send("NLU_REQ_DONE"), //(context,event)=>{
-				//~ //send({ type: "NLU_REQ_DONE", value: 'unconfident_resp'  })
-				//~ //send("NLU_REQ_DONE")
-			//~ //},
-			//~ {
-				//~ actions: [
-					//~ (context:SDSContext, event:any) => console.log(event.data),
-					//~ (context, event)=>{
-						//~ if((event.data.intent.confidence) < 0.7){
-							//~ var snippet = 'unconfident_resp' 
-						//~ }
-						//~ else{
-							//~ var snippet = event.data.intent.name
-						//~ }
-						//~ send({ type: "NLU_REQ_DONE", value: ( event.data.intent.name || 'unconfident_resp' ) })
-					//~ }
-				//~ ]
-			//~ },
-			//~ onError: {
-					//~ target: '#root.dm',
-					//~ actions: say("Sorry, there was an error. ")
-				//~ },
-		//~ },
-		//~ states: {
-			//~ http_timer: {
-				//~ entry: send( 'MAX_HTTP', { delay: 12000, id: 'maxspeech_cancel' } )
-			//~ },
-			//~ done_req: {
-				//~ entry: assign((function(context,event){console.log(event.data.intent.name);send({ type: "NLU_REQ_DONE", value: 'unconfident_resp'  }) }))
-			//~ }
-		//~ }
-	//~ })
-//~ }
 
 const commands = ['stop', 'help']
 var maxspeech_count_local = 0
@@ -319,13 +267,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 							},
 							{
 								target: ".re_prompt",
-								//cond: (context) => context.snippet === "unconfident_resp",
 							},
-							//~ {
-								//~ target: "please_repeat",
-								//~ cond: (context) => !commands.includes(context.recResult),
-								//~ actions: assign(context=>console.log(context.snippet))
-							//~ },
 							
 						],
 						RECOGNISED: '.nlu_process',
@@ -333,7 +275,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 					},
 					states: {
 						prompt: {
-							...promptAndAsk("hello") //"Hellooo. You have a selection of one of the following mini games. You can choose between quick maths, riddles, the number memory test, or spelling. You can also tell me to stop or ask for help at any time. ")
+							...promptAndAsk("Hello! You have a selection of one of the following mini games. You can choose between quick maths, riddles or the number memory test. You can also tell me to stop or ask for help at any time. ")
 						},
 						nlu_process: {
 							initial: 'http_timer',
@@ -350,14 +292,6 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 					
 								},
 								onDone: 'completed_query',
-								//~ {
-									//~ actions: [
-										//~ assign((context, event)=>{
-											//~ console.log(event.data.intent.name),
-											//~ send({ type: "NLU_REQ_DONE", value: ( event.data.intent.name || 'unconfident_resp' ) })
-										//~ }),
-									//~ ]
-								//~ },
 								onError: {
 										target: '#init',
 										actions: say("Sorry, there was an error. ")
@@ -415,7 +349,10 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 							{
 								target: '.right_answer',
 								cond: (context) => context.recResult === context.solution.toString(),
-								actions: assign((context)=>{ return { points: (context.points || 0)+1 } })
+								actions: assign((context)=>{ return { 
+									points: (context.points || 0)+1 ,
+									wrong_math : 0
+								} })
 							},
 							{
 								target: ".wrong_answer",
@@ -456,8 +393,19 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 							}
 						},
 						wrong_answer: {
-							entry: say("Sorry, that isn't right, try again."),
-							on: { ENDSPEECH: "ask" }
+							entry: say("Sorry, that's wrong!"),
+							on: { ENDSPEECH:  [
+									{
+										target: 'try_again',
+										actions: assign(context=>{ return { wrong_math: (context.wrong_math || 0) +1 } }),
+										cond: context=> (context.wrong_math || 0) < 2,
+									},
+									{
+										target: '#init',
+										actions: say("... and you've gotten it wrong a couple of times now! Resetting..."),
+									},
+								]
+							},
 						},
 						right_answer: {
 							entry: send((context) => ({
@@ -477,7 +425,10 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 									{
 										target: '#init',
 										cond: (context) => context.maxspeech_counter > 2,
-										actions: say("As you haven't responded; resetting...")
+										actions: [
+											assign((context=>{ return { maxspeech_counter: 0 } })),
+											say("As you haven't responded; resetting...")
+										]
 									},
 									{
 										target: 'ask',
@@ -485,6 +436,12 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 									},
 								]
 							}
+						},
+						try_again:{
+							entry: say("Try again."),
+							on: {
+								ENDSPEECH: 'ask'
+							},
 						},
 						ask: {
 			                entry: [
@@ -502,11 +459,13 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 						RECOGNISED: [
 							{
 								cond: context => riddles_store[context.riddle_id].answers.includes(context.recResult),
-								actions: say("Well done, that is correct! Resetting..."),
-								target: '#init'
+								actions: [
+									assign(context=>{ return { wrong_riddle: 0 } })
+								],
+								target: '.another_riddle',
 							},
 							{
-								cond: context => context.recResult == 'hint',
+								cond: context => ((context.recResult == 'hint') || (context.recResult == 'hint please')),
 			                    target: '.hint'
 							},
 							{ 
@@ -560,8 +519,58 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 							},
 						},
 						wrong_answer: {
-							entry: say("Sorry, that isn't right, try again. "),
-							on: { ENDSPEECH: "ask" }
+							entry: say("Sorry, that's wrong!"),
+							on: { ENDSPEECH:  [
+									{
+										target: 'try_again',
+										actions: assign(context=>{ return { wrong_riddle: (context.wrong_riddle || 0) +1 } }),
+										cond: context=> (context.wrong_riddle || 0) < 2,
+									},
+									{
+										target: '#init',
+										actions: say("You've gotten it wrong a couple of times now! Resetting..."),
+									},
+								]
+							},
+						},
+						try_again:{
+							entry: say("Try again."),
+							on: {
+								ENDSPEECH: 'ask'
+							},
+						},
+						another_riddle: {
+							initial: 'ask',
+							on: {
+								ENDSPEECH: '.ask',
+								RECOGNISED: [
+									{
+										target: 'prompt',
+										actions: assign((context) => {
+											return { riddle_id: Math.floor(Math.random() * 7) }
+										}),
+										cond: context=> (context.recResult || "invalid") == "yes",
+									},
+									{
+										target: '#init',
+										actions: say("Ok, resetting."),
+									},
+								]
+							},
+							states: {
+								ask: {
+									entry: say("Well done, that is correct! Would you like another riddle?"),
+									on: {
+										ENDSPEECH: 'listen'
+									}
+								},
+								listen: {
+									entry: [
+										send('LISTEN'),
+										send( 'MAXSPEECH', { delay: 15000, id: 'maxspeech_cancel' } )
+									],
+								},
+							}
 						},
 						ask: {
 			                entry: [
@@ -588,11 +597,12 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 								target: ".wrong_sequence" ,
 								cond: (context) => !commands.includes(context.recResult)
 							}
-						]
+						],
+						MAXSPEECH: '.too_long'
 					},
 					states: {
 						prompt: {
-							entry: say("This is the chimp test. I will say an ever increasing sequence of numbers which you need to repeat back to me. If you can't recall a sequence you lose. Try to get the highest score!"),
+							entry: say("This is the number memory test. I will say an ever increasing sequence of numbers which you need to repeat back to me. If you can't recall a sequence you lose. Try to get the highest score!"),
 							on: {
 								ENDSPEECH: {
 									target: 'say_sequence',
@@ -605,7 +615,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 						say_sequence: {
 							entry: send((context) => ({
 		                        type: "SPEAK",
-		                        value: `The sequence is ${context.sequence.join(' ')}. Repeat that back`
+		                        value: `The ${( (context.sequence.length === 1)? 'first' : 'next')} number is ${context.sequence[context.sequence.length-1]}. Repeat back the sequence`
 		                    })),
 		                    on: { ENDSPEECH: 'ask' }
 						},
@@ -644,6 +654,24 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 								send( 'MAXSPEECH', { delay: context=>(4000+1000*context.sequence.length), id: 'maxspeech_cancel' } ),
 							],
 			            },
+						too_long:{
+							entry: say('Hello?'),
+							on: { 
+								ENDSPEECH: [
+									{
+										target: '#init',
+										actions: say("As you haven't responded, resetting..."),
+										cond: context=> context.maxspeech_counter >1,
+									},
+									{
+										target: 'ask',
+										actions: [
+											assign(context=>{ return { maxspeech_counter: (context.maxspeech_counter || 0) +1 } }),
+										]
+									},
+								]
+							},
+						},
 					}
 				},
 				please_repeat: {
@@ -695,52 +723,12 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
 			},
 		},
 		help: {
-			entry: say("I'm supposed to help you but I won't"),
+			entry: say("Here is a help message, but you made the game, so you shouldn't need one. Going back to the game..."),
 			on: {
 				ENDSPEECH: {
-					target: '#init'
+					target: 'main.hist'
 				},
 			},
 		},
 	},
 })
-
-
-
-
-
-//~ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = ({
-    //~ initial: 'init',
-    //~ states: {
-        //~ init: {
-            //~ on: {
-                //~ CLICK: 'welcome'
-            //~ }
-        //~ },
-        //~ welcome: {
-            //~ on: {
-                //~ RECOGNISED: [
-                    //~ { target: 'stop', cond: (context) => context.recResult === 'stop' },
-                    //~ { target: 'repaint' }]
-            //~ },
-            //~ ...promptAndAsk("Tell me the colour")
-        //~ },
-        //~ stop: {
-            //~ entry: say("Ok"),
-            //~ always: 'init'
-        //~ },
-        //~ repaint: {
-            //~ initial: 'prompt',
-            //~ states: {
-                //~ prompt: {
-                    //~ entry: sayColour,
-                    //~ on: { ENDSPEECH: 'repaint' }
-                //~ },
-                //~ repaint: {
-                    //~ entry: 'changeColour',
-                    //~ always: '#root.dm.welcome'
-                //~ }
-            //~ }
-        //~ }
-    //~ }
-//~ })
